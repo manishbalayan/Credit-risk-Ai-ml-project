@@ -19,7 +19,6 @@ from preprocess import load_data, feature_engineering, split_data
 def evaluate_model(name, model, X_test, y_test):
     y_prob = model.predict_proba(X_test)[:, 1]
     y_pred = model.predict(X_test)
-
     print(f"\n===== {name} =====")
     print("Accuracy:", accuracy_score(y_test, y_pred))
     print("Precision:", precision_score(y_test, y_pred))
@@ -31,13 +30,11 @@ def evaluate_model(name, model, X_test, y_test):
 if __name__ == "__main__":
 
     print("\nLoading and preprocessing data...")
-
-    # -------- Load + Engineer Data --------
+    # Load + Engineer Data
     df = load_data("data/Credit Risk Benchmark Dataset.csv")
     df = feature_engineering(df)
     X_train, X_test, y_train, y_test = split_data(df)
-
-    # -------- Logistic Regression --------
+    # Logistic Regression 
     print("\nTraining Logistic Regression...")
 
     scaler = StandardScaler()
@@ -48,8 +45,7 @@ if __name__ == "__main__":
     log_model.fit(X_train_scaled, y_train)
 
     evaluate_model("Logistic Regression", log_model, X_test_scaled, y_test)
-
-    # -------- Random Forest Baseline --------
+    #Random Forest Baseline
     print("\nTraining Random Forest (Baseline)...")
 
     rf_model = RandomForestClassifier(
@@ -60,7 +56,7 @@ if __name__ == "__main__":
     rf_model.fit(X_train, y_train)
     evaluate_model("Random Forest (Baseline)", rf_model, X_test, y_test)
 
-    # -------- Random Forest Tuning --------
+    #Random Forest Tuning
     print("\nTuning Random Forest with GridSearchCV...")
 
     param_grid = {
@@ -87,7 +83,7 @@ if __name__ == "__main__":
 
     evaluate_model("Random Forest (Tuned)", best_rf, X_test, y_test)
 
-    # -------- Save Final Model --------
+    #  Save Final Model 
     print("\nSaving final tuned model...")
 
     os.makedirs("models", exist_ok=True)

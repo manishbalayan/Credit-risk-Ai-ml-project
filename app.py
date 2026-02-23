@@ -1,9 +1,13 @@
 import streamlit as st
 import requests
+import pandas as pd
+
+API_URL = "http://127.0.0.1:8000"
 
 st.title("Credit Risk Prediction System")
 
-st.write("Enter applicant details:")
+
+st.header("Single Applicant Prediction")
 
 rev_util = st.number_input("Revolving Utilization", 0.0, 5.0, 0.5)
 age = st.number_input("Age", 18.0, 100.0, 35.0)
@@ -17,7 +21,6 @@ late_60_89 = st.number_input("Late 60-89 Days", 0.0, 20.0, 0.0)
 dependents = st.number_input("Dependents", 0.0, 10.0, 0.0)
 
 if st.button("Predict Risk"):
-
     payload = {
         "rev_util": rev_util,
         "age": age,
@@ -31,22 +34,52 @@ if st.button("Predict Risk"):
         "dependents": dependents
     }
 
-    response = requests.post(
-        "http://127.0.0.1:8000/predict",
-        json=payload
-    )
+    response = requests.post(f"{API_URL}/predict", json=payload)
 
     if response.status_code == 200:
-        result = response.json()
-        risk = result["risk_probability"]
-
+        risk = response.json()["risk_probability"]
         st.subheader(f"Predicted Risk Probability: {risk:.3f}")
-
-        if risk < 0.3:
-            st.success("Low Risk")
-        elif risk < 0.6:
-            st.warning("Medium Risk")
-        else:
-            st.error("High Risk")
     else:
         st.error("API Error")
+
+
+st.header("Bulk Prediction (Upload CSV)")
+
+uploaded_file = st.file_uploader("Upload a CSV file", type=["csv"])
+
+if uploaded_file is not None:
+
+    df_input = pd.read_csv(uploaded_file)
+    st.write("### Uploaded CSV")
+    st.dataframe(df_input)
+
+    if st.button("Predict for CSV"):
+
+        files = {
+            "file": (
+                uploaded_file.name,
+                uploaded_file.getvalue(),
+                "text/csv"
+            )
+        }
+
+        response = requests.post(f"{API_URL}/predict_csv", files=files)
+
+        if response.status_code == 200:
+            try:
+                df_result = pd.DataFrame(response.json())
+                st.write("### Predictions Added")
+                st.dataframe(df_result)
+
+                st.download_button(
+                    "Download Results CSV",
+                    df_result.to_csv(index=False),
+                    "credit_risk_predictions.csv",
+                    "text/csv"
+                )
+
+            except Exception:
+                st.error("Invalid response from API.")
+
+        else:
+            st.error("CSV Prediction Failed")

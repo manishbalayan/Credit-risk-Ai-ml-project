@@ -1,4 +1,4 @@
-from fastapi import FastAPI
+from fastapi import FastAPI, UploadFile, File
 from pydantic import BaseModel
 import joblib
 import pandas as pd
@@ -7,11 +7,23 @@ from src.preprocess import feature_engineering
 
 app = FastAPI()
 
-# Load model once when API starts
+
 model = joblib.load("models/final_credit_risk_model.pkl")
 
+REQUIRED_FEATURES = [
+    "rev_util",
+    "age",
+    "late_30_59",
+    "debt_ratio",
+    "monthly_inc",
+    "open_credit",
+    "late_90",
+    "real_estate",
+    "late_60_89",
+    "dependents",
+]
 
-# Request schema
+
 class CreditInput(BaseModel):
     rev_util: float
     age: float
@@ -32,17 +44,34 @@ def home():
 
 @app.post("/predict")
 def predict(data: CreditInput):
+    df = pd.DataFrame([data.dict()])
+    df_fe = feature_engineering(df.copy())
+    risk = model.predict_proba(df_fe)[0][1]
+    return {"risk_probability": float(risk)}
 
-    # Convert input to dataframe
-    input_dict = data.dict()
-    df = pd.DataFrame([input_dict])
 
-    # Apply same feature engineering
-    df = feature_engineering(df)
 
-    # Predict probability
-    risk_score = model.predict_proba(df)[0][1]
+@app.post("/predict_csv")
+async def predict_csv(file: UploadFile = File(...)):
 
-    return {
-        "risk_probability": float(risk_score)
-    }
+    df = pd.read_csv(file.file)
+
+    if "dlq_2yrs" in df.columns:
+        df = df.drop(columns=["dlq_2yrs"])
+
+    missing = [col for col in REQUIRED_FEATURES if col not in df.columns]
+
+    if missing:
+        return {
+            "error": "Missing required columns",
+            "missing_columns": missing,
+            "required_columns": REQUIRED_FEATURES
+        }
+
+    df = df[REQUIRED_FEATURES]  
+
+    df_fe = feature_engineering(df.copy())
+
+    df["risk_probability"] = model.predict_proba(df_fe)[:, 1]
+
+    return df.to_dict(orient="records")
