@@ -12,3 +12,6 @@ matplotlib==3.10.7
 seaborn==0.13.2
 
 streamlit==1.52.2
+
+shap==0.46.0
+huggingface_hub==0.23.4

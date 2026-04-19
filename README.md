@@ -5,8 +5,8 @@ This project implements an end-to-end Credit Risk Prediction System capable of e
 
 - A complete machine learning pipeline
 - Feature engineering and model tuning
-- A FastAPI backend serving predictions
-- A Streamlit-based frontend interface
+- A unified Streamlit-based monolithic frontend
+- **[NEW]** An Agentic AI Lending Advisor using SHAP and `flan-t5-base`
 - A fully documented technical journal describing the entire development journey
 
 The solution is designed to be academically rigorous while demonstrating practical engineering standards suitable for real-world deployment.
@@ -23,8 +23,7 @@ credit-risk-project/
 ├── src/
 │   ├── preprocess.py           # Data loading, splitting, and feature engineering
 │   ├── train.py                # Full model training pipeline
-│   ├── evaluate.py             # Cross-validation & feature importance analysis
-│   └── api.py                  # FastAPI backend
+│   └── evaluate.py             # Cross-validation & feature importance analysis
 │
 ├── app.py                      # Streamlit frontend interface
 ├── requirements.txt            # Environment dependencies
@@ -43,18 +42,22 @@ credit-risk-project/
   - Revolving utilization buckets
 - Cross-validation and stability analysis
 
-### 2. Backend (FastAPI)
-- Exposes a `/predict` endpoint
-- Accepts structured applicant financial data
-- Returns risk probability
-- Input validation via Pydantic
-- Model served using joblib
+### 2. Frontend (Streamlit Monolith)
+- Clean and intuitive UI with tabbed navigation
+- Model is loaded natively and cached globally via `@st.cache_resource` for zero-latency execution.
 
 ### 3. Frontend (Streamlit)
-- Clean and intuitive UI
-- Numeric input fields for all applicant attributes
-- Sends POST requests to FastAPI backend
-- Displays predicted risk probability and risk category
+- Clean and intuitive UI with tabbed navigation
+- **Tab 1: Single & Bulk Prediction**: Numeric fields for applicant attributes and CSV upload bulk predictions.
+- **Tab 2: AI Lending Advisor**: An intelligent agent featuring a 3-step pipeline (Predict → Explain → Decide).
+- Displays animated SHAP impact bars and color-coded risk badges.
+- **Chat Mode:** Ask the AI open-ended questions about the specific borrower.
+
+### 4. Agentic AI Pipeline (Milestone 2)
+- **Predict**: ML Model dynamically scores risk probability *natively in the app*.
+- **Explain**: `shap.TreeExplainer` locally extracts top driving risk factors dynamically.
+- **Decide**: `flan-t5-base` (via HuggingFace) generates a structured JSON lending report containing reasoning, conditions, and recommendations.
+- **100% Robustness**: Contains a deterministic Rule-Based Fallback Engine that automatically takes over if the LLM times out or fails (no crashes).
 
 ## Model Performance
 
@@ -90,24 +93,21 @@ source venv/bin/activate
 pip install -r requirements.txt
 ```
 
-## Running the Backend (FastAPI)
+### 4. Setup HuggingFace Token (For AI Agent)
+The AI Lending Advisor uses the free HuggingFace Inference API (`google/flan-t5-base`).
+1. Create a free account and get an Access Token at [HuggingFace Settings](https://huggingface.co/settings/tokens)
+2. Export the token into your terminal before running the app:
+   ```bash
+   export HF_TOKEN="hf_your_actual_token_here"
+   ```
+*(Note: If you skip this step, the app will not crash. It automatically detects the missing token and uses the local Rule-Based Engine to generate reports instead.)*
 
-### Start the Server
-```bash
-uvicorn src.api:app --reload
-```
+## Running the Application (Streamlit)
 
-API at:
-```
-http://127.0.0.1:8000
-```
-
-Swagger Docs:
-```
-http://127.0.0.1:8000/docs
-```
-
-## Running the Frontend (Streamlit)
+> **⚠️ Important:** Ensure your virtual environment is activated before running Streamlit to avoid `ModuleNotFoundError` issues (like missing `shap` or `joblib`)!
+> ```bash
+> source venv/bin/activate
+> ```
 
 Start the UI:
 ```bash
@@ -120,12 +120,11 @@ http://localhost:8501
 ```
 
 ## Prediction Workflow
-
 1. User enters applicant details in Streamlit
-2. Streamlit sends JSON to FastAPI
-3. Backend processes features & loads model
-4. Model outputs risk probability
-5. UI displays result
+2. Streamlit natively structures data and applies feature engineering
+3. ML Model `.predict_proba()` is executed locally
+4. Agent triggers SHAP pipeline based on the output
+5. Report renders instantly in the UI
 
 ## Technical Journal
 
@@ -137,8 +136,8 @@ docs/technical_journal.md
 ## Deployment Options
 
 Suggested platforms:
-- Backend: Railway / Render
-- Frontend: Streamlit Cloud
+- Streamlit Cloud (Preferred)
+- Render (Web Service)
 
 Alternative:
 - Docker deployment
@@ -146,8 +145,6 @@ Alternative:
 - VPS or cloud server
 
 ## Future Improvements
-- Explainability (SHAP)
-- Feature importance plots in UI
 - Model drift monitoring
 - Authentication layer
 - CI/CD workflows
